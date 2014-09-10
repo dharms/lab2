@@ -60,11 +60,11 @@ app.post('/:id/:message', function(req, res){
       // Check you have this
       //var ix = inventory.indexOf(req.params.item)
       //if (ix >= 0) {
-      if (campus[i].stuff== undefined) {
-        campus[i].stuff= [];
+      if (campus[i].messages == undefined) {
+        campus[i].messages = [];
       }
 
-      campus[i].stuff.push(req.params.message);
+      campus[i].messages.push(req.params.message);
       //dropbox(ix,campus[i]);
       if (req.params.message == 'take boat'){
       campus[i].text	+= " YOU GOT A BOAT AND YOU WIN!"
@@ -119,7 +119,7 @@ var campus =
 [ { "id": "lied-center",
   "where": "LiedCenter.jpg",
   "next": {"east": "eaton-hall", "south": "dole-institute"},
-  "text": "You are outside the Lied Center."
+  "text": "Outside the Lied Center"
 },
 { "id": "dole-institute",
   "where": "DoleInstituteofPolitics.jpg",
@@ -129,18 +129,18 @@ var campus =
 { "id": "eaton-hall",
   "where": "EatonHall.jpg",
   "next": {"east": "snow-hall", "south": "allen-fieldhouse", "west": "lied-center"},
-  "text": "You are outside Eaton Hall. You should recognize here."
+  "text": "Outside Eaton Hall. You should recognize here."
 },
 { "id": "snow-hall",
   "where": "SnowHall.jpg",
   "next": {"east": "strong-hall", "south": "ambler-recreation", "west": "eaton-hall"},
-  "text": "You are outside Snow Hall. Math class? Waiting for the bus?"
+  "text": "Outside Snow Hall. Math class? Waiting for the bus?"
 },
 { "id": "strong-hall",
   "where": "StrongHall.jpg",
   "next": {"east": "outside-fraser", "north": "memorial-stadium", "west": "snow-hall"},
   "what": ["coffee"],
-  "text": "You are outside Stong Hall."
+  "text": "Outside Stong Hall"
 },
 { "id": "ambler-recreation",
   "where": "AmblerRecreation.jpg",
@@ -157,7 +157,7 @@ var campus =
   "where": "SpencerMuseum.jpg",
   "next": {"south": "outside-fraser","west":"memorial-stadium"},
   "what": ["art"],
-  "text": "You are at the Spencer Museum of Art."
+  "text": "Outside Spencer Museum of Art"
 },
 { "id": "memorial-stadium",
   "where": "MemorialStadium.jpg",
@@ -168,6 +168,6 @@ var campus =
 { "id": "allen-fieldhouse",
   "where": "AllenFieldhouse.jpg",
   "next": {"north": "eaton-hall","east": "ambler-recreation","west": "dole-institute"},
-  "text": "Rock Chalk! You're at the field house."
+  "text": "Rock Chalk! Allen field house"
 }
 ]
