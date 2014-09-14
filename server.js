@@ -5,76 +5,41 @@ var app = express();
 var server = require('http').Server(app);
 var io = require('socket.io')(server);
 
-
-io.on('connection', function(socket){
-  console.log('a user connected');
-  socket.on('user move', function(msg){
-    io.emit('user move', msg);
-  });
-  //socket.on('item move', function(msg){
-    //io.emit('item move', msg);
-  //});
-  socket.on('disconnect', function(){
-    console.log('a user disconnected');
-  });
-});
-
-
-
+// setup things
 app.set('views', './views');
 app.set('view engine', 'jade');
 app.engine('jade', require('jade').__express);
 
 app.use("/static", express.static(__dirname + '/public'));
 app.use(session({secret: 'toiuqh29872tgjsdoiuLKGSOIULlkjgsj0'}))
-/*
-   app.use(function(req, res, next) {
-   var sess = req.session
-   if (sess.views) {
-   sess.views++
-   res.setHeader('Content-Type', 'text/html')
-   res.write('<p>views: ' + sess.views + '</p>')
-   res.write('<p>expires in: ' + (sess.cookie.maxAge / 1000) + 's</p>')
-   res.end()
-   } else {
-   sess.views = 1
-   res.end('welcome to the session demo. refresh!')
-   }
-   })
-   */
-//app.use(function(req, res, next) {
-//var sess = req.session
-//if (sess.views){
-//sess.views += 1
-//} else {
-//sess.views = 1
-//}
-//app.locals.views = sess.views
-//});
+
+// socket things
+io.on('connection', function(socket){
+  console.log('a user connected');
+  socket.on('user move', function(msg){
+    io.emit('user move', msg);
+  });
+  socket.on('disconnect', function(){
+    console.log('a user disconnected');
+  });
+});
 
 app.get('/', function(req, res){
   var sess = req.session;
-  if (sess.user)
-{}
-else {
-  sess.user = {"id":user_id_bank.pop(),
-    "name":user_bank.pop(),
-"inventory":["towel"],
-"location":"strong-hall"
+  if (sess.user){
+    //
+  } else {
+    sess.user = {"id":user_id_bank.pop(),
+               "name":user_bank.pop(),
+          "inventory":["towel"],
+           "location":"strong-hall"
+                }
+    logged_in.push(sess.user);
   }
-  logged_in.push(sess.user);
-}
-res.render('index', { user: sess.user});
+  res.render('index', { user: sess.user});
 });
 
-
-//app.get('/', function(req, res){
-//res.status(200);
-//res.sendFile(__dirname + "/index.html");
-//});
-
 app.get('/users', function(req, res){
-  var sess = req.session;
   res.set({'Content-Type': 'application/json'});
   res.status(200);
   res.send(logged_in);
@@ -82,14 +47,12 @@ app.get('/users', function(req, res){
 });
 
 app.get('/:user/inventory', function(req, res){
-  //var sess = req.session;
   for (var i in logged_in){
     if (req.params.user == logged_in[i].id) {
       user = logged_in[i];
-    } 
-  } 
+    }
+  }
   if (user != ''){
-
     res.set({'Content-Type': 'application/json'});
     res.status(200);
     res.send(user.inventory);
@@ -98,17 +61,15 @@ app.get('/:user/inventory', function(req, res){
   res.status(404);
   res.send("not found, sorry");
   return;
-
 });
 
 app.post('/:user/:where', function(req, res){
-  //var sess = req.session;
   var user = '';
   for (var i in logged_in){
     if (req.params.user == logged_in[i].id) {
       user = logged_in[i];
-    } 
-  } 
+    }
+  }
   if (user != ''){
     for (var i in campus) {
       if (req.params.where == campus[i].id) {
@@ -126,7 +87,6 @@ app.post('/:user/:where', function(req, res){
 
 
 app.get('/:where/items', function(req, res){
-  //var sess = req.session;
   for (var i in campus) {
     if (req.params.where == campus[i].id) {
       if (campus[i].items == undefined) {
@@ -144,19 +104,17 @@ app.get('/:where/items', function(req, res){
 
 app.get('/images/:name', function(req, res){
   res.status(200);
-  res.sendFile(__dirname + "/static/images/" + req.params.name);
+  res.sendFile(__dirname + "/public/images/" + req.params.name);
 });
 
 app.delete('/:user/:where/:item', function(req, res){
-  //var sess = req.session;
   var user = '';
   for (var i in logged_in){
     if (req.params.user == logged_in[i].id) {
       user = logged_in[i];
-    } 
-  } 
+    }
+  }
   if (user != ''){
-
     for (var i in campus) {
       if (req.params.where == campus[i].id) {
         res.set({'Content-Type': 'application/json'});
@@ -164,15 +122,10 @@ app.delete('/:user/:where/:item', function(req, res){
         if (campus[i].items != undefined) {
           ix = campus[i].items.indexOf(req.params.item);
         }
-        //console.log(user.name + " trying to take " + campus[i].items[ix] + " at " + ix );
-        //for (var i in user.inventory){
-        //console.log(user.name + " has  " + user.inventory[i] + " at " + i );
-        //}
         if (ix >= 0) {
           res.status(200);
           user.inventory.push(campus[i].items[ix]); // stash
           res.send(user.inventory);
-          //res.send(inventory);
           campus[i].items.splice(ix, 1); // room no longer has this
           io.emit('item move');
           return;
@@ -191,51 +144,44 @@ app.delete('/:user/:where/:item', function(req, res){
 app.post('/:where/:message', function(req, res){
   for (var i in campus) {
     if (req.params.where == campus[i].id) {
-      // Check you have this
-      //var ix = inventory.indexOf(req.params.item)
-      //if (ix >= 0) {
       if (campus[i].messages == undefined) {
         campus[i].messages = [];
       }
 
       campus[i].messages.push(req.params.message);
-      //dropbox(ix,campus[i]);
       if (req.params.message == 'take boat'){
         campus[i].text	+= " YOU GOT A BOAT AND YOU WIN!"
-
       }
       res.set({'Content-Type': 'application/json'});
       res.status(200);
-      res.set('yay');
+      res.send('yay');
       return;
     }
-    }});
+  }});
 
 app.put('/:user/:where/:item', function(req, res){
-  var sess = req.session;
   var user = '';
   for (var i in logged_in){
     if (req.params.user == logged_in[i].id) {
       user = logged_in[i];
-    } 
-  } 
+    }
+  }
   if (user != ''){
-
     for (var i in campus) {
       if (req.params.where == campus[i].id) {
         // Check you have this
-        var ix = user.inventory.indexOf(req.params.item)
-  if (ix >= 0) {
-    dropbox(user, ix,campus[i]);
-    res.set({'Content-Type': 'application/json'});
-    res.status(200);
-    res.send([]);
-    io.emit('item move');
-  } else {
-    res.status(404);
-    res.send("you do not have this");
-  }
-return;
+        var ix = user.inventory.indexOf(req.params.item);
+        if (ix >= 0) {
+          dropbox(user, ix,campus[i]);
+          res.set({'Content-Type': 'application/json'});
+          res.status(200);
+          res.send([]);
+          io.emit('item move');
+        } else {
+          res.status(404);
+          res.send("you do not have this");
+        }
+        return;
       }
     }
   }
@@ -248,6 +194,7 @@ server.listen(3000);
 var dropbox = function(user, ix, room) {
   var item = user.inventory[ix];
   user.inventory.splice(ix, 1);	 // remove from inventory
+  // winning condition
   if (room.id == 'allen-fieldhouse' && item == "basketball") {
     room.text	+= " Someone found the ball so there is a game going on!"
       return;
@@ -257,8 +204,6 @@ var dropbox = function(user, ix, room) {
   }
   room.items.push(item);
 }
-
-//var inventory = ["laptop"];
 
 var logged_in = []
 

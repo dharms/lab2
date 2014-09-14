@@ -8,7 +8,6 @@
     "jade": "^1.6.0",
     "redis": "*",
     "socket.io": "^1.1.0",
-    "stylus": "*"
   },
   "scripts": {
     "start": "node server.js"
