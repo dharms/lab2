@@ -1,0 +1,194 @@
+doctype html
+html(lang="en")
+  head
+    title Walk KU
+    link(rel='stylesheet', href='/static/basic.css')
+  body
+    #banner
+      #status Logged in as #{user.name}
+    #left_dock
+      #message_dock
+        h2#test Messages
+        ul#messages
+        input#add_message
+        button#submit_message Submit
+
+    #center_dock
+      #image_dock
+        h2
+          #where
+        img#picture
+        br
+      #location_dock
+        #items
+        br
+      #inventory_dock
+        #inventory
+
+    #right_dock
+      #users_dock
+        h2 Users
+        #users
+      #direction_dock
+        #next
+    script(src="/socket.io/socket.io.js")
+    script(src="http://code.jquery.com/jquery-1.10.2.min.js")
+    script.
+      $(function() {
+        var socket = io();
+      socket.on('user move', function(msg){
+  
+            $.get("/users", function (data) {
+                $("#users").html("");
+              if (data == undefined || data.length == 0) {
+                $("#users").html("");
+                } else {
+                for(var i in data) {
+                  var user = data[i];
+                  if (user.location == where){
+                  $("#users").append(user.name+'<br/>');
+                  }
+                }
+              }
+
+            });
+
+      });
+      socket.on('item move', function(msg){
+        $.get("/" + where + "/items/", function (items) {
+            if (items == undefined || items.length == 0) {
+              $("#items").html("");
+              } else {
+              $("#items").html("You can see : ");
+              for(var i in items) {
+                var item = items[i];
+                button = $("<button/><br/>");
+                  button.text("Take " + item);
+                  (function(button,where,item) {
+                    button.click(function() {
+                    $.ajax("/#{user.id}/" + where + "/" + item,
+                      { success : refresh
+                        , type : "DELETE"
+                      }
+                      );
+                      refresh();
+                    });
+                  })(button,where,item);
+                  $("#items").append(button);
+                }
+              }
+      });
+      });
+        $("#where").html("booting...");
+        where = "strong-hall";
+
+        function refresh() {
+
+        $.post("/#{user.id}/" + where, function (data) {
+            $("#where").html(data.text);
+            socket.emit('user move');
+            $("#picture").attr("src","images/" + data.picture);
+
+            if (data.items == undefined || data.items.length == 0) {
+              $("#items").html("");
+              } else {
+              $("#items").html("You can see : ");
+              for(var i in data.items) {
+                var item = data.items[i];
+                //$("#items").append(item);
+                button = $("<button/><br/>");
+                  button.text("Take " + item);
+                  (function(button,where,item) {
+                    button.click(function() {
+                    $.ajax("/#{user.id}/" + where + "/" + item,
+                      { success : refresh
+                        , type : "DELETE"
+                      }
+                      );
+                      refresh();
+                    });
+                  })(button,where,item);
+                  $("#items").append(button);
+                }
+              }//end items
+
+
+              $("#next").html("");
+              for(var i in data.next) {
+                button = $("<button/><br/>");
+                  button.text("Go " + i);
+                  (function(button,dest) {
+                    button.click(function() {
+                      where = dest;
+                      refresh();
+                    });
+                  })(button,data.next[i]);
+                  $("#next").append(button);
+                }
+
+                $("#messages").html("");
+                for(var i in data.messages) {
+                  //$("#messages").append(data.messages[i]+'<br/><br/>');
+                  $("#messages").append($('<li>').text(data.messages[i]));
+                }
+
+              });
+
+              $("#submit_message").on('click', function(){
+                var message = $("#add_message").val();
+                $("#add_message").val('');
+                $.ajax("/" + where + "/" + message,
+                { success : refresh
+                , type : "POST"
+              }
+              );
+              refresh();
+
+            });
+         
+            $.get("/users", function (data) {
+                $("#users").html("");
+              if (data == undefined || data.length == 0) {
+                $("#users").html("");
+                } else {
+                for(var i in data) {
+                  var user = data[i];
+                  if (user.location == where){
+                  $("#users").append(user.name+'<br/>');
+                  }
+                }
+              }
+
+            });
+
+
+            $.get("/#{user.id}/inventory",function (data) {
+              if (data == undefined || data.length == 0) {
+                $("#inventory").html("You are not carrying anything");
+                } else {
+                $("#inventory").html("Inventory : ");
+                for(var i in data) {
+                  var item = data[i];
+                  //$("#inventory").append(item);
+                  button = $("<button/>");
+                    button.text("Drop " + item);
+                    (function(button,where,item) {
+                      button.click(function() {
+                      $.ajax("/#{user.id}/" + where + "/" + item,
+                        { success : refresh
+                        , type : "PUT"
+                      }
+                      );
+                      refresh();
+                    });
+                  })(button,where,item);
+                  $("#inventory").append(button);
+                }
+              }
+            });
+          }
+
+          refresh();
+
+        });
+

@@ -1,23 +1,140 @@
 var express = require('express');
+var session = require('express-session');
 var app = express();
 
-app.get('/', function(req, res){
-  res.status(200);
-  res.sendFile(__dirname + "/index.html");
+var server = require('http').Server(app);
+var io = require('socket.io')(server);
+
+
+io.on('connection', function(socket){
+  console.log('a user connected');
+  socket.on('user move', function(msg){
+    io.emit('user move', msg);
+  });
+  //socket.on('item move', function(msg){
+    //io.emit('item move', msg);
+  //});
+  socket.on('disconnect', function(){
+    console.log('a user disconnected');
+  });
 });
 
-app.get('/:id', function(req, res){
-  if (req.params.id == "inventory") {
+
+
+app.set('views', './views');
+app.set('view engine', 'jade');
+app.engine('jade', require('jade').__express);
+
+app.use("/static", express.static(__dirname + '/public'));
+app.use(session({secret: 'toiuqh29872tgjsdoiuLKGSOIULlkjgsj0'}))
+/*
+   app.use(function(req, res, next) {
+   var sess = req.session
+   if (sess.views) {
+   sess.views++
+   res.setHeader('Content-Type', 'text/html')
+   res.write('<p>views: ' + sess.views + '</p>')
+   res.write('<p>expires in: ' + (sess.cookie.maxAge / 1000) + 's</p>')
+   res.end()
+   } else {
+   sess.views = 1
+   res.end('welcome to the session demo. refresh!')
+   }
+   })
+   */
+//app.use(function(req, res, next) {
+//var sess = req.session
+//if (sess.views){
+//sess.views += 1
+//} else {
+//sess.views = 1
+//}
+//app.locals.views = sess.views
+//});
+
+app.get('/', function(req, res){
+  var sess = req.session;
+  if (sess.user)
+{}
+else {
+  sess.user = {"id":user_id_bank.pop(),
+    "name":user_bank.pop(),
+"inventory":["towel"],
+"location":"strong-hall"
+  }
+  logged_in.push(sess.user);
+}
+res.render('index', { user: sess.user});
+});
+
+
+//app.get('/', function(req, res){
+//res.status(200);
+//res.sendFile(__dirname + "/index.html");
+//});
+
+app.get('/users', function(req, res){
+  var sess = req.session;
+  res.set({'Content-Type': 'application/json'});
+  res.status(200);
+  res.send(logged_in);
+  return;
+});
+
+app.get('/:user/inventory', function(req, res){
+  //var sess = req.session;
+  for (var i in logged_in){
+    if (req.params.user == logged_in[i].id) {
+      user = logged_in[i];
+    } 
+  } 
+  if (user != ''){
+
     res.set({'Content-Type': 'application/json'});
     res.status(200);
-    res.send(inventory);
+    res.send(user.inventory);
     return;
   }
+  res.status(404);
+  res.send("not found, sorry");
+  return;
+
+});
+
+app.post('/:user/:where', function(req, res){
+  //var sess = req.session;
+  var user = '';
+  for (var i in logged_in){
+    if (req.params.user == logged_in[i].id) {
+      user = logged_in[i];
+    } 
+  } 
+  if (user != ''){
+    for (var i in campus) {
+      if (req.params.where == campus[i].id) {
+        user.location = req.params.where;
+        res.set({'Content-Type': 'application/json'});
+        res.status(200);
+        res.send(campus[i]);
+        return;
+      }
+    }
+  }
+  res.status(404);
+  res.send("not found, sorry");
+});
+
+
+app.get('/:where/items', function(req, res){
+  //var sess = req.session;
   for (var i in campus) {
-    if (req.params.id == campus[i].id) {
+    if (req.params.where == campus[i].id) {
+      if (campus[i].items == undefined) {
+        campus[i].items = [];
+      }
       res.set({'Content-Type': 'application/json'});
       res.status(200);
-      res.send(campus[i]);
+      res.send(campus[i].items);
       return;
     }
   }
@@ -27,36 +144,53 @@ app.get('/:id', function(req, res){
 
 app.get('/images/:name', function(req, res){
   res.status(200);
-  res.sendFile(__dirname + "/" + req.params.name);
+  res.sendFile(__dirname + "/static/images/" + req.params.name);
 });
 
-app.delete('/:id/:item', function(req, res){
-  for (var i in campus) {
-    if (req.params.id == campus[i].id) {
-      res.set({'Content-Type': 'application/json'});
-      var ix = -1;
-      if (campus[i].what != undefined) {
-        ix = campus[i].what.indexOf(req.params.item);
-      }
-      if (ix >= 0) {
+app.delete('/:user/:where/:item', function(req, res){
+  //var sess = req.session;
+  var user = '';
+  for (var i in logged_in){
+    if (req.params.user == logged_in[i].id) {
+      user = logged_in[i];
+    } 
+  } 
+  if (user != ''){
+
+    for (var i in campus) {
+      if (req.params.where == campus[i].id) {
+        res.set({'Content-Type': 'application/json'});
+        var ix = -1;
+        if (campus[i].items != undefined) {
+          ix = campus[i].items.indexOf(req.params.item);
+        }
+        //console.log(user.name + " trying to take " + campus[i].items[ix] + " at " + ix );
+        //for (var i in user.inventory){
+        //console.log(user.name + " has  " + user.inventory[i] + " at " + i );
+        //}
+        if (ix >= 0) {
+          res.status(200);
+          user.inventory.push(campus[i].items[ix]); // stash
+          res.send(user.inventory);
+          //res.send(inventory);
+          campus[i].items.splice(ix, 1); // room no longer has this
+          io.emit('item move');
+          return;
+        }
         res.status(200);
-        inventory.push(campus[i].what[ix]); // stash
-        res.send(inventory);
-        campus[i].what.splice(ix, 1); // room no longer has this
+        res.send([]);
+        io.emit('item move');
         return;
       }
-      res.status(200);
-      res.send([]);
-      return;
     }
   }
   res.status(404);
   res.send("location not found");
 });
 
-app.post('/:id/:message', function(req, res){
+app.post('/:where/:message', function(req, res){
   for (var i in campus) {
-    if (req.params.id == campus[i].id) {
+    if (req.params.where == campus[i].id) {
       // Check you have this
       //var ix = inventory.indexOf(req.params.item)
       //if (ix >= 0) {
@@ -67,8 +201,8 @@ app.post('/:id/:message', function(req, res){
       campus[i].messages.push(req.params.message);
       //dropbox(ix,campus[i]);
       if (req.params.message == 'take boat'){
-      campus[i].text	+= " YOU GOT A BOAT AND YOU WIN!"
-      
+        campus[i].text	+= " YOU GOT A BOAT AND YOU WIN!"
+
       }
       res.set({'Content-Type': 'application/json'});
       res.status(200);
@@ -77,96 +211,112 @@ app.post('/:id/:message', function(req, res){
     }
     }});
 
-app.put('/:id/:item', function(req, res){
-	for (var i in campus) {
-		if (req.params.id == campus[i].id) {
-				// Check you have this
-				var ix = inventory.indexOf(req.params.item)
-				if (ix >= 0) {
-					dropbox(ix,campus[i]);
-					res.set({'Content-Type': 'application/json'});
-					res.status(200);
-					res.send([]);
-				} else {
-					res.status(404);
-					res.send("you do not have this");
-				}
-				return;
-		}
-	}
-	res.status(404);
-	res.send("location not found");
+app.put('/:user/:where/:item', function(req, res){
+  var sess = req.session;
+  var user = '';
+  for (var i in logged_in){
+    if (req.params.user == logged_in[i].id) {
+      user = logged_in[i];
+    } 
+  } 
+  if (user != ''){
+
+    for (var i in campus) {
+      if (req.params.where == campus[i].id) {
+        // Check you have this
+        var ix = user.inventory.indexOf(req.params.item)
+  if (ix >= 0) {
+    dropbox(user, ix,campus[i]);
+    res.set({'Content-Type': 'application/json'});
+    res.status(200);
+    res.send([]);
+    io.emit('item move');
+  } else {
+    res.status(404);
+    res.send("you do not have this");
+  }
+return;
+      }
+    }
+  }
+  res.status(404);
+  res.send("location not found");
 });
 
-app.listen(3000);
+server.listen(3000);
 
-var dropbox = function(ix,room) {
-  var item = inventory[ix];
-  inventory.splice(ix, 1);	 // remove from inventory
+var dropbox = function(user, ix, room) {
+  var item = user.inventory[ix];
+  user.inventory.splice(ix, 1);	 // remove from inventory
   if (room.id == 'allen-fieldhouse' && item == "basketball") {
     room.text	+= " Someone found the ball so there is a game going on!"
       return;
   }
-  if (room.what == undefined) {
-    room.what = [];
+  if (room.items == undefined) {
+    room.items = [];
   }
-  room.what.push(item);
+  room.items.push(item);
 }
 
-var inventory = ["laptop"];
+//var inventory = ["laptop"];
+
+var logged_in = []
+
+var user_bank = ["Bubblegum", "LSP", "Finn", "Jake", "An Ice King", "Marceline", "BMO"]
+var user_id_bank = ["Bubblegum", "LSP", "Finn", "Jake", "An-Ice-King", "Marceline", "BMO"]
 
 var campus =
 [ { "id": "lied-center",
-  "where": "LiedCenter.jpg",
+  "picture": "LiedCenter.jpg",
   "next": {"east": "eaton-hall", "south": "dole-institute"},
   "text": "Outside the Lied Center"
 },
 { "id": "dole-institute",
-  "where": "DoleInstituteofPolitics.jpg",
+  "picture": "DoleInstituteofPolitics.jpg",
   "next": {"east": "allen-fieldhouse", "north": "lied-center"},
   "text": "You take in the view of the Dole Institute of Politics. This is the best part of your walk to Nichols Hall."
 },
 { "id": "eaton-hall",
-  "where": "EatonHall.jpg",
+  "picture": "EatonHall.jpg",
   "next": {"east": "snow-hall", "south": "allen-fieldhouse", "west": "lied-center"},
   "text": "Outside Eaton Hall. You should recognize here."
 },
 { "id": "snow-hall",
-  "where": "SnowHall.jpg",
+  "picture": "SnowHall.jpg",
   "next": {"east": "strong-hall", "south": "ambler-recreation", "west": "eaton-hall"},
   "text": "Outside Snow Hall. Math class? Waiting for the bus?"
 },
 { "id": "strong-hall",
-  "where": "StrongHall.jpg",
+  "picture": "StrongHall.jpg",
   "next": {"east": "outside-fraser", "north": "memorial-stadium", "west": "snow-hall"},
-  "what": ["coffee"],
+  "items": ["coffee"],
   "text": "Outside Stong Hall"
 },
 { "id": "ambler-recreation",
-  "where": "AmblerRecreation.jpg",
+  "picture": "AmblerRecreation.jpg",
   "next": {"west": "allen-fieldhouse", "north": "snow-hall"},
   "text": "It's the starting of the semester, and you feel motivated to be at the Gym. Let's see about that in 3 weeks."
 },
 { "id": "outside-fraser",
-  "where": "OutsideFraserHall.jpg",
+  "picture": "OutsideFraserHall.jpg",
   "next": {"west": "strong-hall","north":"spencer-museum"},
-  "what": ["basketball"],
+  "items": ["basketball"],
   "text": "On your walk to the Kansas Union, you wish you had class outside."
 },
 { "id": "spencer-museum",
-  "where": "SpencerMuseum.jpg",
+  "picture": "SpencerMuseum.jpg",
   "next": {"south": "outside-fraser","west":"memorial-stadium"},
-  "what": ["art"],
+  "items": ["art"],
   "text": "Outside Spencer Museum of Art"
 },
 { "id": "memorial-stadium",
-  "where": "MemorialStadium.jpg",
+  "picture": "MemorialStadium.jpg",
   "next": {"south": "strong-hall","east":"spencer-museum"},
-  "what": ["ku flag"],
+  "items": ["ku flag"],
   "text": "Half the crowd is wearing KU Basketball gear at the football game."
 },
 { "id": "allen-fieldhouse",
-  "where": "AllenFieldhouse.jpg",
+  "picture": "AllenFieldhouse.jpg",
   "next": {"north": "eaton-hall","east": "ambler-recreation","west": "dole-institute"},
   "text": "Rock Chalk! Allen field house"
 }

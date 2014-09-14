@@ -1,0 +1,42 @@
+.night-time-body {
+  color: red;
+  background-color: black;
+}
+
+#left_dock {
+  float:left;
+  width: 200px;
+  margin-right: 20px;
+}
+
+#center_dock {
+  float:left;
+  width: 600px;
+}
+
+#right_dock {
+  float:left;
+  width: 200px;
+  margin-left: 20px;
+}
+
+#users_dock {
+}
+
+#users {
+  border-style: solid;
+  border-width: 1px;
+  height:300px;
+  width: 200px;
+}
+
+#direction_dock {
+  height:300px;
+  width: 200px;
+}
+
+#picture {
+  width: 600px;
+}
+
+
