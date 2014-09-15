@@ -8,10 +8,11 @@ html(lang="en")
       #status Logged in as #{user.name}
     #left_dock
       #message_dock
-        h2#test Messages
+        h2 Chat
+        form#chat_form
+          input#add_message
+          button#submit_message Submit
         #messages
-        input#add_message
-        button#submit_message Submit
 
     #center_dock
       #image_dock
@@ -35,8 +36,7 @@ html(lang="en")
     script(src="/socket.io/socket.io.js")
     script(src="../static/jquery.js")
     script.
-      $(function() {
-        var socket = io();
+      var socket = io();
       socket.on('user move', function(msg){
   
             $.get("/users", function (data) {
@@ -57,7 +57,10 @@ html(lang="en")
       });
 
       socket.on('chat message', function(msg){
+      // fix the 'one blank chat created for every move' thing, but not really a fix. a mask.
+      if (msg[0] != ''){
         $("#messages").prepend($('<div>').text(msg[0] + " -" + msg[1]));
+          }
       });
 
 
@@ -86,12 +89,14 @@ html(lang="en")
               }
       });
       });
+      $(function() {
         $("#where").html("booting...");
         where = "strong-hall";
 
         function refresh() {
 
         $.get("/" + where, function (data) {
+
             $("#where").html(data.text);
             $("#picture").attr("src","images/" + data.picture);
 
@@ -125,7 +130,7 @@ html(lang="en")
                   button.text("Go " + i);
                   (function(button,dest) {
                     button.click(function() {
-                      $.ajax("/#{user.id}/" + where + "/",
+                      $.ajax("/#{user.id}/" + dest + "/",
                         { success : refresh
                         , type : "PUT"
                       }
@@ -139,15 +144,13 @@ html(lang="en")
 
               });
 
-              $("#submit_message").on('click', function(){
-
+              $("#chat_form").on('submit', function(){
                 var message = $("#add_message").val();
-
+                if (message != ''){
                 socket.emit('chat message', [$('#add_message').val(), '#{user.name}']);
-
+                }
                 $("#add_message").val('');
                 return false;
-
             });
          
             $.get("/users", function (data) {

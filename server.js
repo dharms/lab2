@@ -15,6 +15,7 @@ app.use(session({secret: 'toiuqh29872tgjsdoiuLKGSOIULlkjgsj0'}))
 
 // socket things
 io.on('connection', function(socket){
+  io.emit('user move');
   console.log('a user connected');
   socket.on('user move', function(msg){
     io.emit('user move', msg);
@@ -79,6 +80,7 @@ app.put('/:user/:where', function(req, res){
         res.set({'Content-Type': 'application/json'});
         res.status(200);
         res.send('');
+        io.emit('user move');
         return;
       }
     }
