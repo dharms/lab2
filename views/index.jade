@@ -9,7 +9,7 @@ html(lang="en")
     #left_dock
       #message_dock
         h2#test Messages
-        ul#messages
+        #messages
         input#add_message
         button#submit_message Submit
 
@@ -31,8 +31,9 @@ html(lang="en")
         #users
       #direction_dock
         #next
+
     script(src="/socket.io/socket.io.js")
-    script(src="http://code.jquery.com/jquery-1.10.2.min.js")
+    script(src="../static/jquery.js")
     script.
       $(function() {
         var socket = io();
@@ -54,6 +55,12 @@ html(lang="en")
             });
 
       });
+
+      socket.on('chat message', function(msg){
+        $("#messages").prepend($('<div>').text(msg[0] + " -" + msg[1]));
+      });
+
+
       socket.on('item move', function(msg){
         $.get("/" + where + "/items/", function (items) {
             if (items == undefined || items.length == 0) {
@@ -84,9 +91,8 @@ html(lang="en")
 
         function refresh() {
 
-        $.post("/#{user.id}/" + where, function (data) {
+        $.get("/" + where, function (data) {
             $("#where").html(data.text);
-            socket.emit('user move');
             $("#picture").attr("src","images/" + data.picture);
 
             if (data.items == undefined || data.items.length == 0) {
@@ -119,6 +125,11 @@ html(lang="en")
                   button.text("Go " + i);
                   (function(button,dest) {
                     button.click(function() {
+                      $.ajax("/#{user.id}/" + where + "/",
+                        { success : refresh
+                        , type : "PUT"
+                      }
+                      );
                       where = dest;
                       refresh();
                     });
@@ -126,23 +137,16 @@ html(lang="en")
                   $("#next").append(button);
                 }
 
-                $("#messages").html("");
-                for(var i in data.messages) {
-                  //$("#messages").append(data.messages[i]+'<br/><br/>');
-                  $("#messages").append($('<li>').text(data.messages[i]));
-                }
-
               });
 
               $("#submit_message").on('click', function(){
+
                 var message = $("#add_message").val();
+
+                socket.emit('chat message', [$('#add_message').val(), '#{user.name}']);
+
                 $("#add_message").val('');
-                $.ajax("/" + where + "/" + message,
-                { success : refresh
-                , type : "POST"
-              }
-              );
-              refresh();
+                return false;
 
             });
          

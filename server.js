@@ -10,7 +10,7 @@ app.set('views', './views');
 app.set('view engine', 'jade');
 app.engine('jade', require('jade').__express);
 
-app.use("/static", express.static(__dirname + '/public'));
+app.use("/static", express.static(__dirname + '/static'));
 app.use(session({secret: 'toiuqh29872tgjsdoiuLKGSOIULlkjgsj0'}))
 
 // socket things
@@ -18,6 +18,9 @@ io.on('connection', function(socket){
   console.log('a user connected');
   socket.on('user move', function(msg){
     io.emit('user move', msg);
+  });
+  socket.on('chat message', function(msg){
+    io.emit('chat message', msg);
   });
   socket.on('disconnect', function(){
     console.log('a user disconnected');
@@ -27,13 +30,12 @@ io.on('connection', function(socket){
 app.get('/', function(req, res){
   var sess = req.session;
   if (sess.user){
-    //
   } else {
     sess.user = {"id":user_id_bank.pop(),
-               "name":user_bank.pop(),
-          "inventory":["towel"],
-           "location":"strong-hall"
-                }
+      "name":user_bank.pop(),
+  "inventory":["towel"],
+  "location":"strong-hall"
+    }
     logged_in.push(sess.user);
   }
   res.render('index', { user: sess.user});
@@ -63,7 +65,7 @@ app.get('/:user/inventory', function(req, res){
   return;
 });
 
-app.post('/:user/:where', function(req, res){
+app.put('/:user/:where', function(req, res){
   var user = '';
   for (var i in logged_in){
     if (req.params.user == logged_in[i].id) {
@@ -76,9 +78,23 @@ app.post('/:user/:where', function(req, res){
         user.location = req.params.where;
         res.set({'Content-Type': 'application/json'});
         res.status(200);
-        res.send(campus[i]);
+        res.send('');
         return;
       }
+    }
+  }
+  res.status(404);
+  res.send("not found, sorry");
+});
+
+
+app.get('/:where', function(req, res){
+  for (var i in campus) {
+    if (req.params.where == campus[i].id) {
+      res.set({'Content-Type': 'application/json'});
+      res.status(200);
+      res.send(campus[i]);
+      return;
     }
   }
   res.status(404);
@@ -104,7 +120,7 @@ app.get('/:where/items', function(req, res){
 
 app.get('/images/:name', function(req, res){
   res.status(200);
-  res.sendFile(__dirname + "/public/images/" + req.params.name);
+  res.sendFile(__dirname + "/static/images/" + req.params.name);
 });
 
 app.delete('/:user/:where/:item', function(req, res){
@@ -141,23 +157,35 @@ app.delete('/:user/:where/:item', function(req, res){
   res.send("location not found");
 });
 
-app.post('/:where/:message', function(req, res){
-  for (var i in campus) {
-    if (req.params.where == campus[i].id) {
-      if (campus[i].messages == undefined) {
-        campus[i].messages = [];
-      }
-
-      campus[i].messages.push(req.params.message);
-      if (req.params.message == 'take boat'){
-        campus[i].text	+= " YOU GOT A BOAT AND YOU WIN!"
-      }
-      res.set({'Content-Type': 'application/json'});
-      res.status(200);
-      res.send('yay');
-      return;
+app.post('/:where/:user/:message', function(req, res){
+  var user = '';
+  for (var i in logged_in){
+    if (req.params.user == logged_in[i].id) {
+      user = logged_in[i];
     }
-  }});
+  }
+  if (user != ''){
+    for (var i in campus) {
+      if (req.params.where == campus[i].id) {
+        if (campus[i].messages == undefined) {
+          campus[i].messages = [];
+        }
+
+        campus[i].messages.push([req.params.message, req.params.user]);
+
+        if (req.params.message == 'take boat'){
+          campus[i].text	+= " YOU GOT A BOAT AND YOU WIN!"
+        }
+        res.set({'Content-Type': 'application/json'});
+        res.status(200);
+        res.send('yay');
+        return;
+      }
+    }
+  }
+  res.status(404);
+  res.send("not found, sorry");
+});
 
 app.put('/:user/:where/:item', function(req, res){
   var user = '';
