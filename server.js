@@ -5,6 +5,9 @@ var app = express();
 var server = require('http').Server(app);
 var io = require('socket.io')(server);
 
+var redis = require('redis');
+var db = redis.createClient();
+
 // setup things
 app.set('views', './views');
 app.set('view engine', 'jade');
@@ -31,15 +34,30 @@ io.on('connection', function(socket){
 app.get('/', function(req, res){
   var sess = req.session;
   if (sess.user){
+    for (var i in logged_in) {
+      if (sess.user.id == logged_in[i].id) {
+        if (i >= 0) {
+          logged_in.splice(i, 1); // force logout
+        }
+      }
+    }
+    logged_in.push(sess.user);
+    res.render('index', { user: sess.user});
   } else {
     sess.user = {"id":user_id_bank.pop(),
       "name":user_bank.pop(),
   "inventory":["towel"],
-  "location":"strong-hall"
+  "where":"strong-hall"
     }
-    logged_in.push(sess.user);
+    db.hget("locations", sess.user.id, function(err, reply) {
+      if (err){
+        res.render('index', { user: sess.user});
+      }
+      sess.user.where = reply;
+      logged_in.push(sess.user);
+      res.render('index', { user: sess.user});
+    });
   }
-  res.render('index', { user: sess.user});
 });
 
 app.get('/users', function(req, res){
@@ -50,6 +68,7 @@ app.get('/users', function(req, res){
 });
 
 app.get('/:user/inventory', function(req, res){
+  var user = '';
   for (var i in logged_in){
     if (req.params.user == logged_in[i].id) {
       user = logged_in[i];
@@ -76,7 +95,13 @@ app.put('/:user/:where', function(req, res){
   if (user != ''){
     for (var i in campus) {
       if (req.params.where == campus[i].id) {
-        user.location = req.params.where;
+        user.where = req.params.where;
+        db.hset(["locations", user.id, user.where], function(err, reply) {
+          if (err){
+            console.log(err);
+          }
+        });
+
         res.set({'Content-Type': 'application/json'});
         res.status(200);
         res.send('');

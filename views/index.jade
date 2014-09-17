@@ -30,6 +30,7 @@ html(lang="en")
       #users_dock
         h2 Users
         #users
+        #user-count
       #direction_dock
         #next
 
@@ -38,7 +39,7 @@ html(lang="en")
     script.
       var socket = io();
       socket.on('user move', function(msg){
-  
+
             $.get("/users", function (data) {
                 $("#users").html("");
               if (data == undefined || data.length == 0) {
@@ -46,7 +47,7 @@ html(lang="en")
                 } else {
                 for(var i in data) {
                   var user = data[i];
-                  if (user.location == where){
+                  if (user.where == where){
                   $("#users").append(user.name+'<br/>');
                   }
                 }
@@ -91,7 +92,10 @@ html(lang="en")
       });
       $(function() {
         $("#where").html("booting...");
+        where = "#{user.where}"
+        if (where == ''){
         where = "strong-hall";
+        }
 
         function refresh() {
 
@@ -152,7 +156,7 @@ html(lang="en")
                 $("#add_message").val('');
                 return false;
             });
-         
+
             $.get("/users", function (data) {
                 $("#users").html("");
               if (data == undefined || data.length == 0) {
@@ -160,11 +164,17 @@ html(lang="en")
                 } else {
                 for(var i in data) {
                   var user = data[i];
-                  if (user.location == where){
+                  if (user.where == where){
                   $("#users").append(user.name+'<br/>');
                   }
                 }
+                if (data.length == 1){
+                $("#user-count").html("You are alone.");
+                } else {
+                $("#user-count").html(data.length + " users logged in");
+                }
               }
+
 
             });
 
