@@ -1,0 +1,201 @@
+doctype html
+html(lang="en")
+  head
+    title Walk KU
+    link(rel='stylesheet', href='/static/basic.css')
+  body
+    #banner
+      #status Logged in as #{user.name}
+    #left_dock
+      #message_dock
+        h2 Chat
+        form#chat_form
+          input#add_message
+          button#submit_message Submit
+        #messages
+
+    #center_dock
+      #image_dock
+        h2
+          #where
+        img#picture
+        br
+      #location_dock
+        #items
+        br
+      #inventory_dock
+        #inventory
+
+    #right_dock
+      #users_dock
+        h2 Users
+        #users
+      #direction_dock
+        #next
+
+    script(src="/socket.io/socket.io.js")
+    script(src="../static/jquery.js")
+    script.
+      var socket = io();
+      socket.on('user move', function(msg){
+  
+            $.get("/users", function (data) {
+                $("#users").html("");
+              if (data == undefined || data.length == 0) {
+                $("#users").html("");
+                } else {
+                for(var i in data) {
+                  var user = data[i];
+                  if (user.location == where){
+                  $("#users").append(user.name+'<br/>');
+                  }
+                }
+              }
+
+            });
+
+      });
+
+      socket.on('chat message', function(msg){
+      // fix the 'one blank chat created for every move' thing, but not really a fix. a mask.
+      if (msg[0] != ''){
+        $("#messages").prepend($('<div>').text(msg[0] + " -" + msg[1]));
+          }
+      });
+
+
+      socket.on('item move', function(msg){
+        $.get("/" + where + "/items/", function (items) {
+            if (items == undefined || items.length == 0) {
+              $("#items").html("");
+              } else {
+              $("#items").html("You can see : ");
+              for(var i in items) {
+                var item = items[i];
+                button = $("<button/><br/>");
+                  button.text("Take " + item);
+                  (function(button,where,item) {
+                    button.click(function() {
+                    $.ajax("/#{user.id}/" + where + "/" + item,
+                      { success : refresh
+                        , type : "DELETE"
+                      }
+                      );
+                      refresh();
+                    });
+                  })(button,where,item);
+                  $("#items").append(button);
+                }
+              }
+      });
+      });
+      $(function() {
+        $("#where").html("booting...");
+        where = "strong-hall";
+
+        function refresh() {
+
+        $.get("/" + where, function (data) {
+
+            $("#where").html(data.text);
+            $("#picture").attr("src","images/" + data.picture);
+
+            if (data.items == undefined || data.items.length == 0) {
+              $("#items").html("");
+              } else {
+              $("#items").html("You can see : ");
+              for(var i in data.items) {
+                var item = data.items[i];
+                //$("#items").append(item);
+                button = $("<button/><br/>");
+                  button.text("Take " + item);
+                  (function(button,where,item) {
+                    button.click(function() {
+                    $.ajax("/#{user.id}/" + where + "/" + item,
+                      { success : refresh
+                        , type : "DELETE"
+                      }
+                      );
+                      refresh();
+                    });
+                  })(button,where,item);
+                  $("#items").append(button);
+                }
+              }//end items
+
+
+              $("#next").html("");
+              for(var i in data.next) {
+                button = $("<button/><br/>");
+                  button.text("Go " + i);
+                  (function(button,dest) {
+                    button.click(function() {
+                      $.ajax("/#{user.id}/" + dest + "/",
+                        { success : refresh
+                        , type : "PUT"
+                      }
+                      );
+                      where = dest;
+                      refresh();
+                    });
+                  })(button,data.next[i]);
+                  $("#next").append(button);
+                }
+
+              });
+
+              $("#chat_form").on('submit', function(){
+                var message = $("#add_message").val();
+                if (message != ''){
+                socket.emit('chat message', [$('#add_message').val(), '#{user.name}']);
+                }
+                $("#add_message").val('');
+                return false;
+            });
+         
+            $.get("/users", function (data) {
+                $("#users").html("");
+              if (data == undefined || data.length == 0) {
+                $("#users").html("");
+                } else {
+                for(var i in data) {
+                  var user = data[i];
+                  if (user.location == where){
+                  $("#users").append(user.name+'<br/>');
+                  }
+                }
+              }
+
+            });
+
+
+            $.get("/#{user.id}/inventory",function (data) {
+              if (data == undefined || data.length == 0) {
+                $("#inventory").html("You are not carrying anything");
+                } else {
+                $("#inventory").html("Inventory : ");
+                for(var i in data) {
+                  var item = data[i];
+                  //$("#inventory").append(item);
+                  button = $("<button/>");
+                    button.text("Drop " + item);
+                    (function(button,where,item) {
+                      button.click(function() {
+                      $.ajax("/#{user.id}/" + where + "/" + item,
+                        { success : refresh
+                        , type : "PUT"
+                      }
+                      );
+                      refresh();
+                    });
+                  })(button,where,item);
+                  $("#inventory").append(button);
+                }
+              }
+            });
+          }
+
+          refresh();
+
+        });
+
