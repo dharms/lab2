@@ -23,6 +23,28 @@
 #users_dock {
 }
 
+.square {
+ position: relative;
+ height: 10px;
+ width: 10px;
+ background: black;
+}
+.square.me {
+ background: green;
+}
+
+.square.them{
+ background: red;
+}
+
+
+#map {
+  border-style: solid;
+  border-width: 1px;
+  height:100px;
+  width: 200px;
+}
+
 #users {
   border-style: solid;
   border-width: 1px;

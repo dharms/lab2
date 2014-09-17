@@ -7,19 +7,8 @@
     "express-session": "^1.8.1",
     "jade": "^1.6.0",
     "redis": "*",
-    "socket.io": "^1.1.0",
-  },
-  "scripts": {
-    "start": "node server.js"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/dharms/lab2.git"
+    "socket.io": "^1.1.0"
   },
   "author": "Derrick Harms",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/dharms/lab2/issues"
-  },
-  "homepage": "https://github.com/dharms/lab2"
+  "license": "ISC"
 }
