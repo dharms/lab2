@@ -2,6 +2,8 @@ var express = require('express');
 var session = require('express-session');
 var app = express();
 
+var crypto = require('crypto');
+
 var server = require('http').Server(app);
 var io = require('socket.io')(server);
 
@@ -31,9 +33,138 @@ io.on('connection', function(socket){
   });
 });
 
+app.post('/login/:username/:password1', function(req, res){
+  //don't like having it in the url..
+  //but i guess it's the same
+  //need to do some validation here
+  var username = req.params.username;
+  var password1 = req.params.password1;
+
+  db.hget("users", username, function(err, reply) {
+    if (err){
+      res.set({'Content-Type': 'application/json'});
+      res.status(200);
+      res.send({'error':"Error with username database."});
+    }
+    if (reply == null){
+      console.log('Username doesn\'t exist; creating new user: '+username);
+      var shasum = crypto.createHash('sha1');
+      shasum.update(password1);
+      var d = shasum.digest('hex');
+      db.hset(["users", username, d], function(err, reply) {
+        if (err){
+          console.log(err);
+        }
+      });
+
+      var sess = req.session;
+      sess.user = {"id":username,
+        "name":username,
+    "inventory":["towel"],
+    "where":"strong-hall"
+      }
+      logged_in.push(sess.user);
+
+      res.set({'Content-Type': 'application/json'});
+      res.status(200);
+      res.send({'success':"User created."});
+    } else {
+      console.log('Attempted login: '+username);
+      var shasum = crypto.createHash('sha1');
+      shasum.update(password1);
+      var d = shasum.digest('hex');
+      if (d == reply){
+
+        var sess = req.session;
+        sess.user = {"id":username,
+          "name":username,
+          "inventory":["towel"],
+          "where":"strong-hall"
+        }
+        logged_in.push(sess.user);
+
+        var msg = username + " logged in.";
+        res.set({'Content-Type': 'application/json'});
+        res.status(200);
+        console.log(msg);
+        res.send({'success':msg});      
+      } else {
+        console.log('Invalid password entered for username: ' + username);
+        res.set({'Content-Type': 'application/json'});
+        res.status(200);
+        res.send({'error':"Invalid password."});
+      }
+    }
+  });
+
+
+});
+
+app.get('/signup/', function(req, res){
+  res.status(200);
+  res.render('signup', {});
+});
+
+app.post('/signup/:username/:password1/:password2', function(req, res){
+  //don't like having it in the url..
+  //but i guess it's the same
+  //need to do some validation here
+  var username = req.params.username;
+  var password1 = req.params.password1;
+  var password2 = req.params.password2;
+  console.log('Attempted create: '+username);
+  if (password1 == password2){
+    console.log('Passwords match for: '+username);
+    db.hget("users", username, function(err, reply) {
+      if (err){
+        res.set({'Content-Type': 'application/json'});
+        res.status(200);
+        res.send({'error':"Error with username database."});
+      }
+      if (reply == null){
+        console.log('Username doesn\'t exist; creating new user: '+username);
+        //make a new user
+        var shasum = crypto.createHash('sha1');
+        shasum.update(password1);
+        var d = shasum.digest('hex');
+        db.hset(["users", username, d], function(err, reply) {
+          if (err){
+            console.log(err);
+          }
+        });
+        var sess = req.session;
+        sess.user = {"id":username,
+          "name":username,
+      "inventory":["towel"],
+      "where":"strong-hall"
+        }
+
+        res.set({'Content-Type': 'application/json'});
+        res.status(200);
+        res.send({'success':"User created."});
+      } else {
+        res.set({'Content-Type': 'application/json'});
+        res.status(200);
+        res.send({'error':"Username is taken."});
+
+      }
+    });
+  } else {
+    console.log('Passwords don\'t match for: '+username);
+    res.set({'Content-Type': 'application/json'});
+    res.status(200);
+    res.send({'error':"Passwords don't match"});
+
+  }
+
+});
+
+
+//home
 app.get('/', function(req, res){
   var sess = req.session;
   if (sess.user){
+    console.log("Session has user: " + sess.user.id );
     for (var i in logged_in) {
       if (sess.user.id == logged_in[i].id) {
         if (i >= 0) {
@@ -42,21 +173,15 @@ app.get('/', function(req, res){
       }
     }
     logged_in.push(sess.user);
+    console.log("Sending to index user: " + sess.user.id );
+    res.status(200);
     res.render('index', { user: sess.user});
   } else {
-    sess.user = {"id":user_id_bank.pop(),
-      "name":user_bank.pop(),
-  "inventory":["towel"],
-  "where":"strong-hall"
-    }
-    db.hget("locations", sess.user.id, function(err, reply) {
-      if (err){
-        res.render('index', { user: sess.user});
-      }
-      sess.user.where = reply;
-      logged_in.push(sess.user);
-      res.render('index', { user: sess.user});
-    });
+    console.log('No user in session, directing to login');
+    res.status(200);
+    //res.send('hey');
+    //todo: some problem here, sometimes login page won't render
+    res.render('login');
   }
 });
 
