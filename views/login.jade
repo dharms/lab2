@@ -35,7 +35,6 @@ html(lang="en")
             if (data['error'] == undefined || data.length == 0) {
               if (data['success'] != undefined && data.length != 0) {
                 $('#error').text(data['success']);
-                  alert('reloading!');
                     location.reload(true);
                       }
                         } else {

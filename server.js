@@ -172,10 +172,15 @@ app.get('/', function(req, res){
         }
       }
     }
-    logged_in.push(sess.user);
+    db.hget("locations", sess.user.id, function(err, reply) {
+      if (err){
+        res.render('index', { user: sess.user});
+      }
+      sess.user.where = reply;
+      logged_in.push(sess.user);
     console.log("Sending to index user: " + sess.user.id );
-    res.status(200);
-    res.render('index', { user: sess.user});
+      res.render('index', { user: sess.user});
+    });
   } else {
     console.log('No user in session, directing to login');
     res.status(200);
