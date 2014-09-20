@@ -1,0 +1,52 @@
+doctype html
+html(lang="en")
+  head
+    title Walk KU Login
+    link(rel='stylesheet', href='/static/basic.css')
+  body
+
+    #signup_dock
+      h2 Signup
+      form#signup_form
+        input(type='text', id='username', placeholder='username')
+        br
+        input(type='password', id='password1', placeholder='Enter password')
+        br
+        input(type='password', id='password2', placeholder='Repeat password')
+        br
+        button#try_signup Submit
+
+        #error
+
+    script(src="/socket.io/socket.io.js")
+    script(src="../static/jquery.js")
+    script.
+      $('#signup_form').on('submit', function(){
+      console.log('clicked!');
+      $('#error').text('');
+      var username = '';
+      var pass1 = '';
+      var pass2 = '';
+      //alert ('woo!');
+      var username = $('#username').val();
+      var pass1 = $('#password1').val();
+      var pass2 = $('#password2').val();
+      console.log(username +' '+ pass1 +' '+ pass2);
+        $.ajax("/signup/"+username+"/"+pass1+"/"+pass2+"/",
+          { success : function(data){
+            if (data['error'] == undefined || data.length == 0) {
+              if (data['success'] != undefined && data.length != 0) {
+                $('#error').text(data['success']);
+                  location.href='/';
+                    }
+                      } else {
+                        $('#error').text('Error: ' + data['error']);
+                          }
+                          }
+                        //, data : {"username":username,"password":pass1}
+                        , type : "POST"
+                      }
+                      );
+                      return false;
+                      });
+
