@@ -1,3 +1,15 @@
+// first: one hash, 'users' username, id
+// second: a hash for each user's info: user:1 - username, password, where, inventory_id 
+//// db.hmset(["user:"+user_id, 'username', username, 'password', d, 'where', 'strong-hall'], function(err, reply) {
+// list for the inventory
+//
+// todo
+//   HERE DO THIS: FIGURE OUT THE INVENTORY ITS A LIST IN THE DB ONE FOR EACH USER BUT WHEN DO I SAVE IT WHEN DO I ACCESS IT OMG
+//
+// need to add the inventory list
+// fix the views
+// or maybe not, just pass the user object in as before?
+
 var express = require('express');
 var session = require('express-session');
 var app = express();
@@ -39,65 +51,117 @@ app.post('/login/:username/:password1', function(req, res){
   //need to do some validation here
   var username = req.params.username;
   var password1 = req.params.password1;
-
+  var user = '';
+  for (var i in logged_in){
+    if (username  == logged_in[i].username) {
+      user = logged_in[i];
+    }
+  }
+  if (user != ''){
+      console.log(username+' is already logged in.');
+      res.set({'Content-Type': 'application/json'});
+      res.status(200);
+      res.send({'error':"User '" + username + "' is already logged in."});
+  } else {
   db.hget("users", username, function(err, reply) {
     if (err){
+      console.log('"Users" error getting user: '+username+': '+err);
       res.set({'Content-Type': 'application/json'});
       res.status(200);
       res.send({'error':"Error with username database."});
     }
-    if (reply == null){
-      console.log('Username doesn\'t exist; creating new user: '+username);
-      var shasum = crypto.createHash('sha1');
-      shasum.update(password1);
-      var d = shasum.digest('hex');
-      db.hset(["users", username, d], function(err, reply) {
-        if (err){
-          console.log(err);
-        }
-      });
-
-      var sess = req.session;
-      sess.user = {"id":username,
-        "name":username,
-    "inventory":["towel"],
-    "where":"strong-hall"
+    var user_id = reply;
+    db.hget("user:"+user_id, 'password', function(err, reply) {
+      if (err){
+        console.log('"Users" error getting user: '+username+': '+err);
+        res.set({'Content-Type': 'application/json'});
+        res.status(200);
+        res.send({'error':"Error with username database."});
       }
-      logged_in.push(sess.user);
-
-      res.set({'Content-Type': 'application/json'});
-      res.status(200);
-      res.send({'success':"User created."});
-    } else {
-      console.log('Attempted login: '+username);
-      var shasum = crypto.createHash('sha1');
-      shasum.update(password1);
-      var d = shasum.digest('hex');
-      if (d == reply){
-
-        var sess = req.session;
-        sess.user = {"id":username,
-          "name":username,
-          "inventory":["towel"],
-          "where":"strong-hall"
-        }
-        logged_in.push(sess.user);
-
-        var msg = username + " logged in.";
+      if (reply == null){
+        console.log('Username ' + username + ' doesn\'t exist.');
         res.set({'Content-Type': 'application/json'});
         res.status(200);
-        console.log(msg);
-        res.send({'success':msg});      
+        res.send({'error':"Username doesn't exist."});
+        /*
+
+           console.log('Username doesn\'t exist; creating new user: '+username);
+           var shasum = crypto.createHash('sha1');
+           shasum.update(password1);
+           var d = shasum.digest('hex');
+           db.hset(["users", username, d], function(err, reply) {
+           if (err){
+           console.log('"Users" error setting user: '+username+': '+err);
+           }
+           });
+           console.log('Adding user: '+username+' to session.');
+
+           var sess = req.session;
+           sess.user = {"id":username,
+           "name":username,
+           "inventory":["towel"],
+           "where":"strong-hall"
+           }
+           logged_in.push(sess.user);
+
+           res.set({'Content-Type': 'application/json'});
+           res.status(200);
+           res.send({'success':"User created."});
+           */
       } else {
-        console.log('Invalid password entered for username: ' + username);
-        res.set({'Content-Type': 'application/json'});
-        res.status(200);
-        res.send({'error':"Invalid password."});
+        console.log('Attempted login: '+username);
+        var shasum = crypto.createHash('sha1');
+        shasum.update(password1);
+        var d = shasum.digest('hex');
+        //console.log(d)
+          //console.log(reply)
+          if (d == reply){
+            //change this to get from the database
+            var sess = req.session;
+            sess.user = {"id":user_id,
+              "username":username,
+            }
+        db.hget("user:"+user_id, 'where', function(err, reply) {
+          if (err){
+             console.log(err);
+          }
+          sess.user.where=reply;
+
+            var msg = username + " logged in.";
+            res.set({'Content-Type': 'application/json'});
+            res.status(200);
+            console.log(msg);
+            res.send({'success':msg});      
+        });
+          } else {
+            console.log('Invalid password entered for username: ' + username);
+            res.set({'Content-Type': 'application/json'});
+            res.status(200);
+            res.send({'error':"Invalid password."});
+          }
+      }
+    });
+  });
+  }
+});
+
+app.get('/logout/', function(req, res){
+  var sess = req.session;
+  var user = sess.user;
+  for (var i in logged_in) {
+    if (user.id == logged_in[i].id) {
+      if (i >= 0) {
+        logged_in.splice(i, 1); // force logout
       }
     }
-  });
+  }
+  req.session.user = '';
+  res.redirect('/');
+});
 
-
+app.get('/login/', function(req, res){
+  res.status(200);
+  res.render('login', {});
 });
 
 app.get('/signup/', function(req, res){
@@ -109,6 +173,7 @@ app.post('/signup/:username/:password1/:password2', function(req, res){
   //don't like having it in the url..
   //but i guess it's the same
   //need to do some validation here
+  var sess = req.session;
   var username = req.params.username;
   var password1 = req.params.password1;
   var password2 = req.params.password2;
@@ -127,26 +192,41 @@ app.post('/signup/:username/:password1/:password2', function(req, res){
         var shasum = crypto.createHash('sha1');
         shasum.update(password1);
         var d = shasum.digest('hex');
-        db.hset(["users", username, d], function(err, reply) {
+        var id = '' 
+      db.incr("user_id", function (err, reply){
+        if (err){
+          console.log(err);
+        }
+        user_id = reply;
+        console.log('user_id: ' + user_id + ' for ' + username );
+        db.hset('users', username, user_id, function(err, reply) {
           if (err){
             console.log(err);
           }
+          console.log(reply);
         });
-        var sess = req.session;
-        sess.user = {"id":username,
-          "name":username,
-      "inventory":["towel"],
-      "where":"strong-hall"
+        db.hmset(["user:"+user_id, 'username', username, 'password', d, 'where', 'strong-hall'], function(err, reply) {
+          if (err){
+            console.log(err);
+          }
+          console.log(reply);
+        });
+        db.lpush('inventory:'+user_id, 'towel');
+        sess.user = {"id":user_id,
+          "username":username,
+          //"inventory":["towel"],
+          "where":"strong-hall"
         }
+        console.log('Successfully made user ' + username + ' with id ' + sess.user.id);
 
         res.set({'Content-Type': 'application/json'});
         res.status(200);
         res.send({'success':"User created."});
+      });
       } else {
         res.set({'Content-Type': 'application/json'});
         res.status(200);
         res.send({'error':"Username is taken."});
-
       }
     });
   } else {
@@ -164,21 +244,21 @@ app.post('/signup/:username/:password1/:password2', function(req, res){
 app.get('/', function(req, res){
   var sess = req.session;
   if (sess.user){
-    console.log("Session has user: " + sess.user.id );
-    for (var i in logged_in) {
-      if (sess.user.id == logged_in[i].id) {
-        if (i >= 0) {
-          logged_in.splice(i, 1); // force logout
-        }
-      }
-    }
-    db.hget("locations", sess.user.id, function(err, reply) {
+    db.hget("users", sess.user.id, function(err, reply) {
       if (err){
-        res.render('index', { user: sess.user});
+        console.log(err);
+        //res.render('index', { user: sess.user});
       }
-      sess.user.where = reply;
+      if (reply){
+        console.log('From / with ' + sess.user.id + ' got: ' + reply);
+        //console.log(reply.name);
+        //console.log(reply.where);
+        //console.log(reply.inventory);
+        //sess.user = reply;
+      }
+      //console.log(sess.user.name + ' got location ' + reply);
       logged_in.push(sess.user);
-    console.log("Sending to index user: " + sess.user.id );
+      console.log("Sending user: " + sess.user.username + " to index." );
       res.render('index', { user: sess.user});
     });
   } else {
@@ -186,7 +266,7 @@ app.get('/', function(req, res){
     res.status(200);
     //res.send('hey');
     //todo: some problem here, sometimes login page won't render
-    res.render('login');
+    res.redirect('login');
   }
 });
 
@@ -205,14 +285,19 @@ app.get('/:user/inventory', function(req, res){
     }
   }
   if (user != ''){
+    db.lrange('inventory:'+user.id, '0', '-1', function(err, reply){
+    if (err){
+      console.log(err);
+    }
+      //console.log('Inventory for ' + user.username + ": ");
+      //console.log(reply);
+
     res.set({'Content-Type': 'application/json'});
     res.status(200);
-    res.send(user.inventory);
+    res.send(reply);
     return;
+    });
   }
-  res.status(404);
-  res.send("not found, sorry");
-  return;
 });
 
 app.put('/:user/:where', function(req, res){
@@ -226,7 +311,7 @@ app.put('/:user/:where', function(req, res){
     for (var i in campus) {
       if (req.params.where == campus[i].id) {
         user.where = req.params.where;
-        db.hset(["locations", user.id, user.where], function(err, reply) {
+        db.hset(["user:"+user.id, 'where', user.where], function(err, reply) {
           if (err){
             console.log(err);
           }
@@ -281,6 +366,7 @@ app.get('/images/:name', function(req, res){
 });
 
 app.delete('/:user/:where/:item', function(req, res){
+  console.log('Deleting ' + req.params.item + ' from ' + req.params.where);
   var user = '';
   for (var i in logged_in){
     if (req.params.user == logged_in[i].id) {
@@ -297,8 +383,24 @@ app.delete('/:user/:where/:item', function(req, res){
         }
         if (ix >= 0) {
           res.status(200);
-          user.inventory.push(campus[i].items[ix]); // stash
-          res.send(user.inventory);
+          //if (user.inventory == undefined){
+            //user.inventory = [];
+          //}
+          //user.inventory.push(campus[i].items[ix]); // stash
+          db.lpush('inventory:'+user.id, campus[i].items[ix]);
+          //db.hset(["user", user.id, user], function(err, reply) {
+          //if (err){
+          //console.log(err);
+          //}
+          //});
+
+          //res.set({'Content-Type': 'application/json'});
+          //res.status(200);
+          //res.send('');
+          //io.emit('user move');
+          //return;
+
+          //res.send(user.inventory);
           campus[i].items.splice(ix, 1); // room no longer has this
           io.emit('item move');
           return;
@@ -327,7 +429,6 @@ app.post('/:where/:user/:message', function(req, res){
         if (campus[i].messages == undefined) {
           campus[i].messages = [];
         }
-
         campus[i].messages.push([req.params.message, req.params.user]);
 
         if (req.params.message == 'take boat'){
@@ -345,7 +446,9 @@ app.post('/:where/:user/:message', function(req, res){
 });
 
 app.put('/:user/:where/:item', function(req, res){
+  console.log('Putting ' + req.params.item + ' in ' + req.params.where);
   var user = '';
+  var item = req.params.item;
   for (var i in logged_in){
     if (req.params.user == logged_in[i].id) {
       user = logged_in[i];
@@ -355,17 +458,24 @@ app.put('/:user/:where/:item', function(req, res){
     for (var i in campus) {
       if (req.params.where == campus[i].id) {
         // Check you have this
-        var ix = user.inventory.indexOf(req.params.item);
-        if (ix >= 0) {
-          dropbox(user, ix,campus[i]);
+        //var ix = user.inventory.indexOf(req.params.item);
+        var remove = db.lrem('inventory:'+user.id, '1', item);
+        //console.log('Index is: ' + ix);
+        if (remove != 0) {
+          if (campus[i].items == undefined) {
+            campus[i].items = [];
+          }
+          campus[i].items.push(item);
+
           res.set({'Content-Type': 'application/json'});
           res.status(200);
           res.send([]);
-          io.emit('item move');
+          //io.emit('item move');
         } else {
           res.status(404);
           res.send("you do not have this");
         }
+          io.emit('item move');
         return;
       }
     }
@@ -378,16 +488,30 @@ server.listen(3000);
 
 var dropbox = function(user, ix, room) {
   var item = user.inventory[ix];
+  console.log('Putting ' + item + ' in ' + room.id);
   user.inventory.splice(ix, 1);	 // remove from inventory
-  // winning condition
-  if (room.id == 'allen-fieldhouse' && item == "basketball") {
-    room.text	+= " Someone found the ball so there is a game going on!"
-      return;
-  }
+  //db.hset(["user", user.id, user], function(err, reply) {
+  //if (err){
+  //console.log(err);
+  //}
+  //});
+
+  //res.set({'Content-Type': 'application/json'});
+  //res.status(200);
+  //res.send('');
+  //io.emit('user move');
+  //return;
+
   if (room.items == undefined) {
     room.items = [];
   }
   room.items.push(item);
+  // winning condition
+  if (room.id == 'allen-fieldhouse' && item == "basketball") {
+    room.text	+= " Someone found the ball so there is a game going on!"
+  }
+  return;
+
 }
 
 var logged_in = []

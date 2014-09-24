@@ -7,12 +7,12 @@ html(lang="en")
 
     #login_dock
       h2 Login
-      form#login_form
+      form#login_form(action="/")
         input(type='text', id='username', placeholder='username')
         br
         input(type='password', id='password1', placeholder='Enter password')
         br
-        button#try_login Submit
+        input(type="submit" value="Login")
         br
         br
         br
@@ -35,7 +35,7 @@ html(lang="en")
             if (data['error'] == undefined || data.length == 0) {
               if (data['success'] != undefined && data.length != 0) {
                 $('#error').text(data['success']);
-                    location.reload(true);
+                  window.location.href = '/';
                       }
                         } else {
                         $('#error').text('Error: ' + data['error']);
