@@ -177,7 +177,7 @@ app.post('/signup/:username/:password1/:password2', function(req, res){
           }
           console.log(reply);
         });
-        db.lpush('inventory:'+user_id, 'towel');
+        db.lpush('inventory:user'+user_id, 'towel');
         sess.user = {"id":user_id,
           "username":username,
           "where":"strong-hall"
@@ -243,7 +243,7 @@ app.get('/:user/inventory', function(req, res){
     }
   }
   if (user != ''){
-    db.lrange('inventory:'+user.id, '0', '-1', function(err, reply){
+    db.lrange('inventory:user'+user.id, '0', '-1', function(err, reply){
       if (err){
         console.log(err);
       }
@@ -338,7 +338,7 @@ app.delete('/:user/:where/:item', function(req, res){
         }
         if (ix >= 0) {
           res.status(200);
-          db.lpush('inventory:'+user.id, campus[i].items[ix]);
+          db.lpush('inventory:user'+user.id, campus[i].items[ix]);
           campus[i].items.splice(ix, 1); // room no longer has this
           io.emit('item move');
           return;
@@ -396,7 +396,7 @@ app.put('/:user/:where/:item', function(req, res){
     for (var i in campus) {
       if (req.params.where == campus[i].id) {
         // Check you have this
-        var remove = db.lrem('inventory:'+user.id, '1', item);
+        var remove = db.lrem('inventory:user'+user.id, '1', item);
         if (remove != 0) {
           if (campus[i].items == undefined) {
             campus[i].items = [];
